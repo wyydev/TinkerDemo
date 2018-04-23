@@ -1,0 +1,242 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        applicationId "com.android.hboxs020.tinker"
+        minSdkVersion 17
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        multiDexEnabled true
+        javaCompileOptions { annotationProcessorOptions { includeCompileClasspath = true } }
+
+        signingConfigs {
+            release {
+                try {
+                    storeFile file("C:/workspace/hboxs.jks")
+                    storePassword "android"
+                    keyAlias "hboxs"
+                    keyPassword "android"
+                } catch (ex) {
+                    throw new InvalidUserDataException(ex.toString())
+                }
+
+                try {
+                debug {//调试版本的签名配置
+                    keyAlias 'androiddebugkey'
+                    keyPassword 'android'
+                    storeFile file('C:/Users/hboxs020/.android/debug.keystore')
+                    storePassword 'android'
+                }
+                } catch (ex) {
+                    throw new InvalidUserDataException(ex.toString())
+                }
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+
+    //注解，生成application使用
+    provided("com.tencent.tinker:tinker-android-anno:${TINKER_VERSION}") { changing = true }
+
+    //tinker核心sdk库
+    compile("com.tencent.tinker:tinker-android-lib:${TINKER_VERSION}") { changing = true }
+    compile "com.android.support:multidex:1.0.3"
+}
+
+def javaVersion = JavaVersion.VERSION_1_7
+def bakPath = file("${buildDir}/bakApk")
+
+ext {
+    //是否开启tinker
+    tinkerEnable = true
+
+    //tinker old apk 文件路径
+    tinkerOldApkPath = "${bakPath}/app-release-0423-17-53-39.apk"
+
+    //tinker id 与app versionName保持一致
+    tinkerID = android.defaultConfig.versionName
+
+    //old apk混淆文件路径
+    tinkerApplyMappingPath = "${bakPath}/app-release-0423-17-53-39-mapping.txt"
+
+    //old apk的资源文件路径
+    tinkerApplyResourceMappingPath = "${bakPath}/app-release-0423-17-53-39-R.txt"
+}
+
+def buildWithTinker() {
+    return ext.tinkerEnable
+}
+
+def getOldApkPath() {
+    return ext.tinkerOldApkPath
+}
+
+def getApplyMappingPath() {
+    return ext.tinkerApplyMappingPath
+}
+
+def getApplyResourceMappingPath() {
+    return ext.tinkerApplyResourceMappingPath
+}
+
+def getTinkerIdValue() {
+    return ext.tinkerID
+}
+
+if (buildWithTinker()) {//启用Tinker
+    //引入tinker patch包
+    apply plugin: 'com.tencent.tinker.patch'
+
+    //tinker参数配置
+    tinkerPatch {
+
+        oldApk = getOldApkPath() //指定old apk 文件路径
+
+        //是否忽略tinker的警告 （生成patch文件时有指定错误tinker会发出警告，设为false 出错时tinker会终止生成patch文件）
+        ignoreWarning = false
+
+        useSign = true //强制patch文件也使用签名，防止被篡改
+
+        tinkerEnable = buildWithTinker() //指定是否使用tinker
+
+        /**
+         * Warning, applyMapping will affect the normal android build!
+         */
+        buildConfig {
+
+            applyMapping = getApplyMappingPath() //指定old apk打包时使用的混淆文件（patch文件也需要混淆，与apk打包的混淆文件一致）
+
+            applyResourceMapping = getApplyResourceMappingPath() //指定old apk的资源文件路径
+
+            tinkerId = getTinkerIdValue() //指定TinkerID
+
+            //如果我们有多个dex,编译补丁时可能会由于类的移动导致变更增多。若打开keepDexApply模式，补丁包将根据基准包的类分布来编译
+            keepDexApply = false
+
+        }
+
+        dex {
+            dexMode = "jar"
+
+            pattern = ["classes*.dex",
+                       "assets/secondary-dex-?.jar"] //指定dex文件目录
+
+            loader = ["com.android.hboxs020.tinker.MyTinkerApplication"] //指定加载patch文件入口
+        }
+
+        //tinker 支持对jar包和so文件替换
+        lib {
+            //指定工程中的jar文件和so文件路径
+            pattern = ["libs/*/*.so"]
+        }
+
+        //tinker 支持对资源文件替换
+        res {
+            /**
+             * optional，default '[]'
+             * what resource in apk are expected to deal with tinkerPatch
+             * it support * or ? pattern.
+             * you must include all your resources in apk here,
+             * otherwise, they won't repack in the new apk resources.
+             */
+            pattern = ["res/*", "assets/*", "resources.arsc", "AndroidManifest.xml"]
+            //指定tinker可以修改的资源文件路径
+
+            /**
+             * optional，default '[]'
+             * the resource file exclude patterns, ignore add, delete or modify resource change
+             * it support * or ? pattern.
+             * Warning, we can only use for files no relative with resources.arsc
+             */
+            ignoreChange = ["assets/sample_meta.txt"] //指定不受影响的资源路径，根据实际需要修改
+
+            /**
+             * default 100kb
+             * for modify resource, if it is larger than 'largeModSize'
+             * we would like to use bsdiff algorithm to reduce patch file size
+             */
+            largeModSize = 100 //资源修改大小默认值，超过100kb，使用bsdiff算法处理减少patch文件大小
+        }
+
+        //非必需，说明本次patch文件的相关信息
+        packageConfig{
+            //以key，value的方式配置，根据实际项目需要添加
+            //如对patch文件的说明,更新小功能或者修复某个bug
+            configField("patchMessage","fix the 1.0 version's bugs")
+
+            configField("patchVersion",getTinkerIdValue())
+        }
+    }
+
+    //判断是否有多渠道
+    List<String> flavors = new ArrayList<>();
+    project.android.productFlavors.each { flavor ->
+        flavors.add(flavor.name)
+    }
+    boolean hasFlavors = flavors.size() > 0
+    def date = new Date().format("MMdd-HH-mm-ss")
+
+    /**
+     * bak apk and mapping  脚本
+     */
+    android.applicationVariants.all { variant ->
+        /**
+         * task type, you want to bak
+         */
+        def taskName = variant.name
+
+        tasks.all {
+            if ("assemble${taskName.capitalize()}".equalsIgnoreCase(it.name)) {
+
+                it.doLast {
+                    copy {
+                        def fileNamePrefix = "${project.name}-${variant.baseName}"
+                        def newFileNamePrefix = hasFlavors ? "${fileNamePrefix}" : "${fileNamePrefix}-${date}"
+                        //找到打包apk文件拷贝到指定文件
+                        def destPath = hasFlavors ? file("${bakPath}/${project.name}-${date}/${variant.flavorName}") : bakPath
+                        from variant.outputs.first().outputFile
+                        into destPath
+                        rename { String fileName ->
+                            fileName.replace("${fileNamePrefix}.apk", "${newFileNamePrefix}.apk")
+                        }
+
+                        from "${buildDir}/outputs/mapping/${variant.dirName}/mapping.txt"
+                        into destPath
+                        rename { String fileName ->
+                            fileName.replace("mapping.txt", "${newFileNamePrefix}-mapping.txt")
+                        }
+
+                        from "${buildDir}/intermediates/symbols/${variant.dirName}/R.txt"
+                        into destPath
+                        rename { String fileName ->
+                            fileName.replace("R.txt", "${newFileNamePrefix}-R.txt")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+

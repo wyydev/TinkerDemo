@@ -2,6 +2,12 @@ package com.android.hboxs020.tinker;
 
 import android.content.Context;
 
+import com.tencent.tinker.lib.patch.AbstractPatch;
+import com.tencent.tinker.lib.patch.UpgradePatch;
+import com.tencent.tinker.lib.reporter.DefaultLoadReporter;
+import com.tencent.tinker.lib.reporter.DefaultPatchReporter;
+import com.tencent.tinker.lib.reporter.LoadReporter;
+import com.tencent.tinker.lib.reporter.PatchReporter;
 import com.tencent.tinker.lib.tinker.Tinker;
 import com.tencent.tinker.lib.tinker.TinkerInstaller;
 import com.tencent.tinker.loader.app.ApplicationLike;
@@ -17,14 +23,27 @@ public class TinkerManager {
 
     private static ApplicationLike mApplicationLike;
 
+    private static CustomPatchListener mCustomPatchListener;
+
     public static void installTinker(ApplicationLike applicationLike){
         mApplicationLike = applicationLike;
         if (installed){
             //已经初始化过
             return;
         }
+
+        mCustomPatchListener = new CustomPatchListener(getApplicationContext());
+
+        //日志上报，监听patch文件安装结果
+        LoadReporter loadReporter = new DefaultLoadReporter(getApplicationContext());
+        PatchReporter patchReporter = new DefaultPatchReporter(getApplicationContext());
+
+        AbstractPatch abstractPatch = new UpgradePatch(); //决定tinker patch文件安装策略
         //完成Tinker初始化
-        TinkerInstaller.install(mApplicationLike);
+//        TinkerInstaller.install(mApplicationLike);
+        TinkerInstaller.install(mApplicationLike,loadReporter,patchReporter,
+                mCustomPatchListener,CustomResultService.class,abstractPatch);
+        installed = true;
     }
 
     public static void loadPatch(String path){

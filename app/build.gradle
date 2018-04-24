@@ -69,16 +69,16 @@ ext {
     tinkerEnable = true
 
     //tinker old apk 文件路径
-    tinkerOldApkPath = "${bakPath}/app-release-0423-17-53-39.apk"
+    tinkerOldApkPath = "${bakPath}/app-release-0424-11-24-16.apk"
 
     //tinker id 与app versionName保持一致
     tinkerID = android.defaultConfig.versionName
 
     //old apk混淆文件路径
-    tinkerApplyMappingPath = "${bakPath}/app-release-0423-17-53-39-mapping.txt"
+    tinkerApplyMappingPath = "${bakPath}/app-release-0424-11-24-16-mapping.txt"
 
     //old apk的资源文件路径
-    tinkerApplyResourceMappingPath = "${bakPath}/app-release-0423-17-53-39-R.txt"
+    tinkerApplyResourceMappingPath = "${bakPath}/app-release-0424-11-24-16-R.txt"
 }
 
 def buildWithTinker() {

@@ -21,6 +21,12 @@ public class CustomApplicationLike extends ApplicationLike {
     }
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+
+    }
+
+    @Override
     public void onBaseContextAttached(Context base) {
         super.onBaseContextAttached(base);
 

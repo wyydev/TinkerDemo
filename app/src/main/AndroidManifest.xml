@@ -19,6 +19,7 @@
             </intent-filter>
         </activity>
 
+        <service android:name=".CustomResultService"/>
     </application>
 
 </manifest>

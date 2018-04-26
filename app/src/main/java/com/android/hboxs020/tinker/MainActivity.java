@@ -10,15 +10,15 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity {
 
     private static final String SUFFIX = ".apk";
-    private String mPacthDir ;
+    private String mPatchDir;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mPacthDir = getExternalCacheDir().getAbsolutePath()+"/tpacth/";
-        File file = new File(mPacthDir);
+        mPatchDir = getExternalCacheDir().getAbsolutePath()+"/tpacth/";
+        File file = new File(mPatchDir);
 
         if (!file.exists()){
             file.mkdir();
@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String getPatchName() {
-        return mPacthDir.concat("patch_signed").concat(SUFFIX);
+        return mPatchDir.concat("patch_signed").concat(SUFFIX);
     }
 
     public void loadPatch(View view) {
